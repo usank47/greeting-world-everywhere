@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Ensure HMR uses secure websocket and the preview proxy (which terminates TLS)
+    hmr: {
+      protocol: 'wss',
+      clientPort: 443,
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
