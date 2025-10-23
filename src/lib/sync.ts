@@ -1,19 +1,25 @@
 // Minimal sync helpers to push/pull orders and products to Supabase.
 // These are intentionally defensive — they no-op if Supabase isn't configured.
 
-import supabase, { isSupabaseEnabled } from './supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { getOrders, updateOrder } from './storage';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+function isSupabaseEnabled() {
+  return Boolean(SUPABASE_URL && supabase);
+}
+
 export async function pullFromSupabase() {
-  if (!isSupabaseEnabled() || !supabase) return;
+  if (!isSupabaseEnabled()) return;
 
   try {
     // fetch all orders (for simplicity). In production use incremental fetch by updated_at
-    const { data: orders, error: ordersErr } = await supabase.from('orders').select('*');
+    const { data: orders, error: ordersErr } = await (supabase as any).from('orders').select('*');
     if (ordersErr) throw ordersErr;
 
     for (const o of orders || []) {
-      const { data: prods, error: prodErr } = await supabase
+      const { data: prods, error: prodErr } = await (supabase as any)
         .from('order_products')
         .select('*')
         .eq('order_id', o.id);
@@ -52,11 +58,11 @@ export async function pullFromSupabase() {
 }
 
 export async function pushToSupabase(localOrders?: any[]) {
-  if (!isSupabaseEnabled() || !supabase) return;
+  if (!isSupabaseEnabled()) return;
   try {
     const toPush = localOrders ?? getOrders();
     for (const order of toPush) {
-      const { error: orderErr } = await supabase.from('orders').upsert({
+      const { error: orderErr } = await (supabase as any).from('orders').upsert({
         id: order.id,
         date: order.date,
         supplier: order.supplier,
@@ -67,7 +73,7 @@ export async function pushToSupabase(localOrders?: any[]) {
       if (orderErr) console.error('push order error', orderErr);
 
       for (const p of order.products || []) {
-        const { error: prodErr } = await supabase.from('order_products').upsert({
+        const { error: prodErr } = await (supabase as any).from('order_products').upsert({
           id: p.id,
           order_id: order.id,
           name: p.name,
