@@ -1,10 +1,24 @@
 import { Order } from '@/types/order';
-import { indexedDBService } from './indexedDB';
+import { supabase } from '@/integrations/supabase/client';
 
 // UUID validation regex
 const isValidUUID = (id: string): boolean => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(id);
+};
+
+// Call MongoDB edge function
+const callMongoDBFunction = async (operation: string, data?: any, orderId?: string) => {
+  const { data: result, error } = await supabase.functions.invoke('mongodb-orders', {
+    body: { operation, data, orderId }
+  });
+
+  if (error) {
+    console.error('MongoDB function error:', error);
+    throw error;
+  }
+
+  return result;
 };
 
 // Normalize text to title case
@@ -28,7 +42,7 @@ export const saveOrder = async (order: Order): Promise<void> => {
       })),
     };
     
-    await indexedDBService.saveOrder(normalizedOrder);
+    await callMongoDBFunction('save', normalizedOrder);
   } catch (error) {
     console.error('Error saving order:', error);
     throw error;
@@ -37,13 +51,14 @@ export const saveOrder = async (order: Order): Promise<void> => {
 
 export const getOrders = async (): Promise<Order[]> => {
   try {
-    const orders = await indexedDBService.getOrders();
+    const result = await callMongoDBFunction('getAll');
+    const orders = result.data || [];
     
     // Filter and normalize orders
     return orders
-      .filter(order => isValidUUID(order.id))
-      .filter(order => order.products.every(p => isValidUUID(p.id)))
-      .map(order => ({
+      .filter((order: Order) => isValidUUID(order.id))
+      .filter((order: Order) => order.products.every(p => isValidUUID(p.id)))
+      .map((order: Order) => ({
         ...order,
         supplier: toTitleCase(order.supplier),
         products: order.products.map(p => ({
@@ -65,7 +80,7 @@ export const getOrders = async (): Promise<Order[]> => {
 
 export const deleteOrder = async (orderId: string): Promise<void> => {
   try {
-    await indexedDBService.deleteOrder(orderId);
+    await callMongoDBFunction('delete', undefined, orderId);
   } catch (error) {
     console.error('Error deleting order:', error);
     throw error;
@@ -88,7 +103,7 @@ export const updateOrder = async (order: Order): Promise<void> => {
       updatedAt: new Date().toISOString(),
     };
     
-    await indexedDBService.updateOrder(normalizedOrder);
+    await callMongoDBFunction('update', normalizedOrder);
   } catch (error) {
     console.error('Error updating order:', error);
     throw error;
