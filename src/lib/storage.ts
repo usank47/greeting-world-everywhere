@@ -1,26 +1,6 @@
 import { Order } from '@/types/order';
 import { supabase } from '@/integrations/supabase/client';
 
-// UUID validation regex
-const isValidUUID = (id: string): boolean => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-};
-
-// Call MongoDB edge function
-const callMongoDBFunction = async (operation: string, data?: any, orderId?: string) => {
-  const { data: result, error } = await supabase.functions.invoke('mongodb-orders', {
-    body: { operation, data, orderId }
-  });
-
-  if (error) {
-    console.error('MongoDB function error:', error);
-    throw error;
-  }
-
-  return result;
-};
-
 // Normalize text to title case
 const toTitleCase = (text: string): string => {
   if (!text) return '';
@@ -31,18 +11,36 @@ export const saveOrder = async (order: Order): Promise<void> => {
   try {
     // Normalize data before saving
     const normalizedOrder = {
-      ...order,
+      id: order.id,
+      date: order.date,
       supplier: toTitleCase(order.supplier),
-      products: order.products.map(p => ({
-        ...p,
-        name: p.name?.trim() || '',
-        category: toTitleCase(p.category),
-        brand: toTitleCase(p.brand),
-        compatibility: p.compatibility?.trim() || '',
-      })),
+      total_amount: order.totalAmount,
     };
     
-    await callMongoDBFunction('save', normalizedOrder);
+    // Insert order
+    const { error: orderError } = await supabase
+      .from('orders')
+      .insert(normalizedOrder);
+    
+    if (orderError) throw orderError;
+    
+    // Insert products
+    const normalizedProducts = order.products.map(p => ({
+      id: p.id,
+      order_id: order.id,
+      name: p.name?.trim() || '',
+      category: toTitleCase(p.category),
+      brand: toTitleCase(p.brand),
+      compatibility: p.compatibility?.trim() || '',
+      quantity: p.quantity,
+      price: p.price,
+    }));
+    
+    const { error: productsError } = await supabase
+      .from('order_products')
+      .insert(normalizedProducts);
+    
+    if (productsError) throw productsError;
   } catch (error) {
     console.error('Error saving order:', error);
     throw error;
@@ -51,18 +49,34 @@ export const saveOrder = async (order: Order): Promise<void> => {
 
 export const getOrders = async (): Promise<Order[]> => {
   try {
-    const result = await callMongoDBFunction('getAll');
-    const orders = result.data || [];
+    // Fetch all orders
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
     
-    // Filter and normalize orders
-    return orders
-      .filter((order: Order) => isValidUUID(order.id))
-      .filter((order: Order) => order.products.every(p => isValidUUID(p.id)))
-      .map((order: Order) => ({
-        ...order,
-        supplier: toTitleCase(order.supplier),
-        products: order.products.map(p => ({
-          ...p,
+    if (ordersError) throw ordersError;
+    if (!ordersData) return [];
+    
+    // Fetch all products
+    const { data: productsData, error: productsError } = await supabase
+      .from('order_products')
+      .select('*');
+    
+    if (productsError) throw productsError;
+    
+    // Map orders with their products
+    return ordersData.map(order => ({
+      id: order.id,
+      date: order.date,
+      supplier: toTitleCase(order.supplier),
+      totalAmount: Number(order.total_amount),
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+      products: (productsData || [])
+        .filter(p => p.order_id === order.id)
+        .map(p => ({
+          id: p.id,
           name: p.name?.trim() || '',
           category: toTitleCase(p.category),
           brand: toTitleCase(p.brand),
@@ -70,8 +84,7 @@ export const getOrders = async (): Promise<Order[]> => {
           price: Number(p.price),
           quantity: Number(p.quantity),
         })),
-        totalAmount: Number(order.totalAmount),
-      }));
+    }));
   } catch (error) {
     console.error('Error fetching orders:', error);
     return [];
@@ -80,7 +93,21 @@ export const getOrders = async (): Promise<Order[]> => {
 
 export const deleteOrder = async (orderId: string): Promise<void> => {
   try {
-    await callMongoDBFunction('delete', undefined, orderId);
+    // Delete products first (foreign key dependency)
+    const { error: productsError } = await supabase
+      .from('order_products')
+      .delete()
+      .eq('order_id', orderId);
+    
+    if (productsError) throw productsError;
+    
+    // Delete order
+    const { error: orderError } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+    
+    if (orderError) throw orderError;
   } catch (error) {
     console.error('Error deleting order:', error);
     throw error;
@@ -89,21 +116,43 @@ export const deleteOrder = async (orderId: string): Promise<void> => {
 
 export const updateOrder = async (order: Order): Promise<void> => {
   try {
-    // Normalize data before updating
-    const normalizedOrder = {
-      ...order,
-      supplier: toTitleCase(order.supplier),
-      products: order.products.map(p => ({
-        ...p,
-        name: p.name?.trim() || '',
-        category: toTitleCase(p.category),
-        brand: toTitleCase(p.brand),
-        compatibility: p.compatibility?.trim() || '',
-      })),
-      updatedAt: new Date().toISOString(),
-    };
+    // Update order
+    const { error: orderError } = await supabase
+      .from('orders')
+      .update({
+        date: order.date,
+        supplier: toTitleCase(order.supplier),
+        total_amount: order.totalAmount,
+      })
+      .eq('id', order.id);
     
-    await callMongoDBFunction('update', normalizedOrder);
+    if (orderError) throw orderError;
+    
+    // Delete existing products
+    const { error: deleteError } = await supabase
+      .from('order_products')
+      .delete()
+      .eq('order_id', order.id);
+    
+    if (deleteError) throw deleteError;
+    
+    // Insert updated products
+    const normalizedProducts = order.products.map(p => ({
+      id: p.id,
+      order_id: order.id,
+      name: p.name?.trim() || '',
+      category: toTitleCase(p.category),
+      brand: toTitleCase(p.brand),
+      compatibility: p.compatibility?.trim() || '',
+      quantity: p.quantity,
+      price: p.price,
+    }));
+    
+    const { error: productsError } = await supabase
+      .from('order_products')
+      .insert(normalizedProducts);
+    
+    if (productsError) throw productsError;
   } catch (error) {
     console.error('Error updating order:', error);
     throw error;
