@@ -7,15 +7,10 @@ import NotFound from "./pages/NotFound";
 
 const App = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout><PriceList /></Layout>} />
-        <Route path="/new-order" element={<Layout><NewOrder /></Layout>} />
-        <Route path="/order-history" element={<Layout><OrderHistory /></Layout>} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <div>
+      <h1>Testing Basic Render</h1>
+      <p>If you see this, React is working</p>
+    </div>
   );
 };
 
