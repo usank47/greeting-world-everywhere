@@ -73,17 +73,16 @@ const NewOrder = () => {
     const updated = [...products];
     updated[index] = { ...updated[index], [field]: value };
     setProducts(updated);
-  };
 
-  const addNewOption = (index: number, field: keyof Product, value: string) => {
-    // Only add complete values (when user finishes typing or selects)
-    const v = value.trim();
-    if (!v || v.length < 2) return; // Ignore single characters
-    
-    if (field === 'name' && !productNameOptions.includes(v)) setProductNameOptions((s) => [...s, v]);
-    if (field === 'category' && !categoryOptions.includes(v)) setCategoryOptions((s) => [...s, v]);
-    if (field === 'brand' && !brandOptions.includes(v)) setBrandOptions((s) => [...s, v]);
-    if (field === 'compatibility' && !compatibilityOptions.includes(v)) setCompatibilityOptions((s) => [...s, v]);
+    // if user typed a new suggestion, add it locally so it appears for other rows immediately
+    if (typeof value === 'string') {
+      const v = value.trim();
+      if (!v) return;
+      if (field === 'name' && !productNameOptions.includes(v)) setProductNameOptions((s) => [...s, v]);
+      if (field === 'category' && !categoryOptions.includes(v)) setCategoryOptions((s) => [...s, v]);
+      if (field === 'brand' && !brandOptions.includes(v)) setBrandOptions((s) => [...s, v]);
+      if (field === 'compatibility' && !compatibilityOptions.includes(v)) setCompatibilityOptions((s) => [...s, v]);
+    }
   };
 
   const addProduct = () => {
@@ -262,11 +261,9 @@ const NewOrder = () => {
             <ComboBox
               id="supplier"
               value={supplier}
-              onChange={setSupplier}
-              onComplete={(val) => {
-                if (val && val.length >= 2 && !supplierOptions.includes(val)) {
-                  setSupplierOptions((s) => [...s, val]);
-                }
+              onChange={(val) => {
+                setSupplier(val);
+                if (val && !supplierOptions.includes(val)) setSupplierOptions((s) => [...s, val]);
               }}
               options={supplierOptions}
               placeholder="Select or type supplier"
@@ -282,7 +279,6 @@ const NewOrder = () => {
               product={product}
               index={index}
               onChange={handleProductChange}
-              onComplete={addNewOption}
               onRemove={removeProduct}
               showRemove={products.length > 1}
               productNameOptions={productNameOptions}

@@ -5,13 +5,12 @@ type ComboProps = {
   id?: string;
   value: string;
   onChange: (value: string) => void;
-  onComplete?: (value: string) => void; // Called when typing is complete
   options: string[];
   placeholder?: string;
   className?: string;
 };
 
-export const ComboBox: React.FC<ComboProps> = ({ id, value, onChange, onComplete, options, placeholder, className }) => {
+export const ComboBox: React.FC<ComboProps> = ({ id, value, onChange, options, placeholder, className }) => {
   const [open, setOpen] = React.useState(false);
   const [input, setInput] = React.useState(value || '');
   const [highlight, setHighlight] = React.useState(-1);
@@ -36,7 +35,6 @@ export const ComboBox: React.FC<ComboProps> = ({ id, value, onChange, onComplete
       setInput(v);
       setOpen(false);
       setHighlight(-1);
-      onComplete?.(v); // Notify parent that selection is complete
     }
   };
 
@@ -55,7 +53,6 @@ export const ComboBox: React.FC<ComboProps> = ({ id, value, onChange, onComplete
         onBlur={() => {
           // ensure last typed value is propagated
           onChange(input);
-          onComplete?.(input); // Notify parent that typing is complete
           setOpen(false);
         }}
         onFocus={() => setOpen(true)}
