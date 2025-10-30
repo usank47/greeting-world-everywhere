@@ -11,6 +11,7 @@ interface ProductFormProps {
   product: Product;
   index: number;
   onChange: (index: number, field: keyof Product, value: string | number) => void;
+  onComplete?: (index: number, field: keyof Product, value: string) => void;
   onRemove: (index: number) => void;
   showRemove: boolean;
   productNameOptions?: string[];
@@ -23,6 +24,7 @@ const ProductForm = ({
   product,
   index,
   onChange,
+  onComplete,
   onRemove,
   showRemove,
   productNameOptions = [],
@@ -53,6 +55,7 @@ const ProductForm = ({
             id={`product-name-${index}`}
             value={product.name || ''}
             onChange={(val: string) => onChange(index, 'name', val)}
+            onComplete={(val: string) => onComplete?.(index, 'name', val)}
             options={productNameOptions}
             placeholder="Select or type product name"
           />
@@ -90,6 +93,7 @@ const ProductForm = ({
             id={`category-${index}`}
             value={product.category || ''}
             onChange={(val: string) => onChange(index, 'category', val)}
+            onComplete={(val: string) => onComplete?.(index, 'category', val)}
             options={categoryOptions}
             placeholder="Select or type category"
           />
@@ -101,6 +105,7 @@ const ProductForm = ({
             id={`brand-${index}`}
             value={product.brand || ''}
             onChange={(val: string) => onChange(index, 'brand', val)}
+            onComplete={(val: string) => onComplete?.(index, 'brand', val)}
             options={brandOptions}
             placeholder="Select or type brand"
           />
@@ -112,6 +117,7 @@ const ProductForm = ({
             id={`compatibility-${index}`}
             value={product.compatibility || ''}
             onChange={(val: string) => onChange(index, 'compatibility', val)}
+            onComplete={(val: string) => onComplete?.(index, 'compatibility', val)}
             options={compatibilityOptions}
             placeholder="Select or type compatibility"
           />
