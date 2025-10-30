@@ -9,19 +9,17 @@ import OrderHistory from "./pages/OrderHistory";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
-  <>
+  <BrowserRouter>
     <Toaster />
     <Sonner />
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout><PriceList /></Layout>} />
-        <Route path="/new-order" element={<Layout><NewOrder /></Layout>} />
-        <Route path="/order-history" element={<Layout><OrderHistory /></Layout>} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
-  </>
+    <Routes>
+      <Route path="/" element={<Layout><PriceList /></Layout>} />
+      <Route path="/new-order" element={<Layout><NewOrder /></Layout>} />
+      <Route path="/order-history" element={<Layout><OrderHistory /></Layout>} />
+      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </BrowserRouter>
 );
 
 export default App;
