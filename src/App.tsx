@@ -1,6 +1,4 @@
 import React from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import Layout from "./components/Layout";
@@ -12,8 +10,6 @@ import NotFound from "./pages/NotFound";
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
     <BrowserRouter>
-      <Toaster />
-      <Sonner />
       <Routes>
         <Route path="/" element={<Layout><PriceList /></Layout>} />
         <Route path="/new-order" element={<Layout><NewOrder /></Layout>} />
